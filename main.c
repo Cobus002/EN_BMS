@@ -74,107 +74,24 @@ int main(void)
 	
 	//Variables to store the input results
 	uint8_t in1PinState = 0;
-	uint8_t in2PinState = 0;		
+	uint8_t in2PinState = 0;
+	
+	//Make sure the timers are in the inactive state
+	tickIN1Active = 0;
+	tickIN1Count = 0;
+	tickIN1Done = 1;
+	
+	tickIN2Active = 0;
+	tickIN2Count = 0;
+	tickIN2Done = 1;		
 	// loop forever
 	while(1)
 	{
 		//BEGIN WHILE LOOP
 		//Read the inputs
-		
 		in1PinState = readInput(EN_GPIO_INPUT_4);
+		handleSubProgA(in1PinState);
 		
-		switch (in1CurrentState)
-		{
-			case IN1_S0:
-				if(in1PinState == 0){
-					in1LastState = in1CurrentState;
-					in1CurrentState = IN1_S1;
-					//Start 15sec timer
-					startIN1Timer(5);//Wait for 30sec
-					//writeLEDOutput(1, 0, 0); 
-				}
-				break;
-				
-			case IN1_S1:
-				//gotta wait for 30sec
-				//Check if timer is done
-				if (tickIN1Done!=1)
-				{
-					break;
-				}
-				
-				if(in1PinState == 0){
-					//Pin still low move to next state
-					writeLEDOutput(0,1,0); //Green
-					in1LastState = in1CurrentState;
-					in1CurrentState = IN1_S2;
-					startIN1Timer(5);	
-				}else{
-					//Return to start
-					in1LastState = in1CurrentState;
-					in1CurrentState = IN1_S0;
-				}
-				break;
-				
-			case IN1_S2: 
-				//Now in S2
-				//Check timer done
-				if(!tickIN1Done){
-					break;
-				}
-				
-				if(in1PinState == 0){
-					writeLEDOutput(0,0,1);
-					writeRelayOutput(EN_GPIO_OUTPUT_1, 1);
-					writeRelayOutput(EN_GPIO_OUTPUT_2, 1);
-					writeRelayOutput(EN_GPIO_OUTPUT_3, 1);
-					in1CurrentState = IN1_S3;
-					startIN1Timer(5);//Wait 15sec
-				}else{
-					in1CurrentState = IN1_S0;//Return to start
-				}
-			break;
-			
-			case IN1_S3:
-				if(!tickIN1Done){
-					break;
-				}
-				//Turn on latching relay
-				_delay_ms(1000);
-				//Turn off latching relay
-				in1CurrentState = IN1_S4;
-				startIN1Timer(5); //Wait 5sec
-			break;
-			
-			case IN1_S4:
-				if(!tickIN1Done){
-					break;
-				}
-				//turn off the outputs 1&2
-				writeRelayOutput(EN_GPIO_OUTPUT_1,0);
-				writeRelayOutput(EN_GPIO_OUTPUT_2, 0);
-				in1CurrentState = IN1_S5;
-				startIN1Timer(10);//Wait 12min
-			break;
-			
-			case IN1_S5:
-				if(!tickIN1Done){
-					break;
-				}
-				//Check input 1
-				if(in1PinState==0){
-					in1CurrentState = IN1_S2;
-				}else{
-					//Go to next state
-					startIN1Timer(6*60);
-					in1CurrentState = IN1_S0;
-				}
-				
-			break;
-			
-
-		}
-	
 	_delay_ms(1);
 	//END WHILE LOOP
 	}
@@ -225,5 +142,135 @@ void startIN1Timer(uint16_t timeSeconds){
 	
 }
 void startIN2Timer(uint16_t timeSeconds){
+	tickIN2Done=0;
+	tickIN2Count = timeSeconds;
+	tickIN2Active = 1;
+	
+}
+
+void handleSubProgA(uint8_t in1PinState){
+	switch (in1CurrentState)
+	{
+		case IN1_S0:
+		//Needs to wait for timer
+		if (!tickIN1Done)
+		{
+			break;
+		}
+		if(in1PinState == 0){
+			in1LastState = in1CurrentState;
+			in1CurrentState = IN1_S1;
+			//Start 15sec timer
+			startIN1Timer(5);//Wait for 30sec
+			//writeLEDOutput(1, 0, 0);
+		}
+		break;
+		
+		case IN1_S1:
+		//gotta wait for 30sec
+		//Check if timer is done
+		if (tickIN1Done!=1)
+		{
+			break;
+		}
+		
+		if(in1PinState == 0){
+			//Pin still low move to next state
+			writeLEDOutput(0,1,0); //Green
+			in1LastState = in1CurrentState;
+			in1CurrentState = IN1_S2;
+			startIN1Timer(5);
+			}else{
+			//Return to start
+			in1LastState = in1CurrentState;
+			in1CurrentState = IN1_S0;
+		}
+		break;
+		
+		case IN1_S2:
+		//Now in S2
+		//Check timer done
+		if(!tickIN1Done){
+			break;
+		}
+		
+		if(in1PinState == 0){
+			writeLEDOutput(0,0,1);
+			writeRelayOutput(EN_GPIO_OUTPUT_1, 1);
+			writeRelayOutput(EN_GPIO_OUTPUT_2, 1);
+			writeRelayOutput(EN_GPIO_OUTPUT_3, 1);
+			in1CurrentState = IN1_S3;
+			startIN1Timer(5);//Wait 15sec
+			}else{
+			in1CurrentState = IN1_S0;//Return to start
+		}
+		break;
+		
+		case IN1_S3:
+		if(!tickIN1Done){
+			break;
+		}
+		//Turn on latching relay
+		_delay_ms(1000);
+		//Turn off latching relay
+		in1CurrentState = IN1_S4;
+		startIN1Timer(5); //Wait 5sec
+		break;
+		
+		case IN1_S4:
+		if(!tickIN1Done){
+			break;
+		}
+		//turn off the outputs 1&2
+		writeRelayOutput(EN_GPIO_OUTPUT_1,0);
+		writeRelayOutput(EN_GPIO_OUTPUT_2, 0);
+		in1CurrentState = IN1_S5;
+		startIN1Timer(10);//Wait 12min
+		break;
+		
+		case IN1_S5:
+		if(!tickIN1Done){
+			break;
+		}
+		//Check input 1
+		if(in1PinState==0){
+			in1CurrentState = IN1_S2;
+			}else{
+			//Go to next state
+			in1CurrentState = IN1_S0;
+			startIN1Timer(6*60);
+		}
+		
+		break;
+	}
+}
+
+
+void handleSubProgB(uint8_t in2PinState){
+	switch (in2CurrentState)
+	{
+	case IN2_S0:
+		//Wait for timer to stop
+		if(!tickIN2Done){
+			break;
+		}
+		
+		if(in2PinState==0){
+			in2CurrentState = IN2_S1;
+			startIN2Timer(5); //Start 15sec timer
+		}
+		break;
+		
+	case IN2_S1:
+		if(!tickIN2Done){
+			break;
+		}
+		if(in2PinState==0){
+			
+			
+		}
+		
+	break;
+	}
 	
 }
