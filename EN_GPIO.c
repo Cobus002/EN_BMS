@@ -4,6 +4,8 @@ void initRelayOutputs(){
 	//used to set up the relays as outputs 
 	DDRC |= (1<<PC2)|(1<<PC0);
 	DDRB |= (1<<PB7)|(1<<PB6);
+	//TOR OUTPUTS
+	DDRD |= (1<<PD3)|(1<<PD4);
 	
 }
 void initInputs(){
@@ -14,6 +16,19 @@ void initInputs(){
 
 void initStatusLed(){
 	DDRB |= (1<<5)|(1<<4)|(1<<3);
+}
+
+void initTempSensor(){
+	//Make sure PC4 is input in free running mode with interrupt enable
+	//implement ISR() in main to trigger on conversion complete 
+	//DDRC &= ~(1<<4);
+	ADMUX |= (1<<REFS0)|(1<<MUX2); //Select ADC4 as input
+	
+	ADCSRA |= (1<<ADEN)|(1<<ADATE)|(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0); 
+	//Start the ADC
+	ADCSRA |=(1<<ADSC);
+	
+	
 }
 
 uint8_t readInput(uint8_t en_input){
@@ -41,21 +56,44 @@ uint8_t readInput(uint8_t en_input){
 	
 	return temp;
 }
+uint16_t readTempSens(){
+	
+	//Start the conversion
+	ADCSRA |=(1<<ADSC);
+	
+	//Wait for conversion to finish
+	while(!(ADCSRA & (1<<ADIF))){
+		//do nothing
+	}
+	
+	//Clear the flag
+	ADCSRA |= (1<<ADIF);
+	
+	return(ADC);
+}
+
 
 void writeRelayOutput(uint8_t en_output, uint8_t val){
 	switch (en_output){
 		case EN_GPIO_OUTPUT_1:
 		val == 0 ? (PORTB &= ~(1<<6)): (PORTB |= (1<<6));
-		break;
+			break;
 		case EN_GPIO_OUTPUT_2:
 		val == 0 ? (PORTB &= ~(1<<7)): (PORTB |= (1<<7));
-		break;
+			break;
 		case EN_GPIO_OUTPUT_3:
 		val == 0 ? (PORTC &= ~(1<<2)): (PORTC |= (1<<2));
-		break;
+			break;
 		case EN_GPIO_OUTPUT_4:
 		val == 0 ? (PORTC &= ~(1<<0)): (PORTC |= (1<<0));
-		break;
+			break;
+		case EN_GPIO_TOR_1:
+			val == 0 ? (PORTD &= ~(1<<3)): (PORTD |= (1<<3));
+			break;
+		case EN_GPIO_TOR_2:
+			val == 0 ? (PORTD &= ~(1<<4)): (PORTD |= (1<<4));
+			break;
+		
 	}
 }
 
@@ -95,6 +133,8 @@ void checkStatusLED(){
 	writeLEDOutput(0,1,0);
 	_delay_ms(1000);
 	writeLEDOutput(0,0,1);
+	_delay_ms(1000);
+	writeLEDOutput(0,0,0);
 	_delay_ms(1000);
 	
 }
