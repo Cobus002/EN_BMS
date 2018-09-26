@@ -35,6 +35,12 @@
 uint8_t OUT1_PIN = 3;
 uint8_t OUT2_PIN = 4;
 
+typedef struct tickTimer{
+	uint16_t count;
+	uint8_t done;
+	uint8_t active;
+}TickTock;
+
 //Set up ticks for the different input modes
 uint16_t tickIN1Count=0;
 uint16_t tickIN2Count=0;
@@ -78,12 +84,14 @@ void startTempTimer2(uint16_t timeSeconds);
 void handleSubProgA(uint8_t in1PinState);
 void handleSubProgB(uint8_t in1PinState);
 void handleSubProgC(uint16_t temperature);
+void handleSubProgD(uint16_t temperature);
 
 int main(void)
 {
-
 	initTimer();
 	initRelayOutputs();
+	initLatchOutput();
+	
 	//checkRelayOutputs();
 	initStatusLed();
 	//start the temperature reading
@@ -122,7 +130,7 @@ int main(void)
 		//Read the temperature
 		
 		
-		if(tempVal>184){
+		if(tempVal>190){
 			writeLEDOutput(0,0,1);
 		}else if(tempVal>150){
 			writeLEDOutput(1,0,0);
@@ -131,6 +139,10 @@ int main(void)
 		}else if(tempVal == 0){
 			writeLEDOutput(0,0,0);
 		}
+		
+		writeBatteryLatch(1);
+		_delay_ms(1000);
+		writeBatteryLatch(0);
 		_delay_ms(1000);
 		
 		
@@ -187,6 +199,29 @@ ISR(TIMER1_COMPA_vect){
 			tickIN2Active = 0;
 		}
 	}
+	
+	//tickTemp1 Stuff
+	if(tickTemp1Active){
+		if(tickTemp1Count>0){
+			tickTemp1Count --;
+		}else{
+			tickTemp1Active=0;
+			tickTemp1Done=1;
+		}
+		
+	}
+	
+	//tickTemp1 Stuff
+	if(tickTemp2Active){
+		if(tickTemp2Count>0){
+			tickTemp2Count --;
+			}else{
+			tickTemp2Active=0;
+			tickTemp2Done=1;
+		}
+			
+	}
+		
 	
 	sei();
 	
@@ -286,7 +321,9 @@ void handleSubProgA(uint8_t in1PinState){
 			break;
 		}
 		//Turn on latching relay
+		writeBatteryLatch(1);
 		_delay_ms(1000);
+		writeBatteryLatch(0);
 		//Turn off latching relay
 		in1CurrentState = IN1_S4;
 		startIN1Timer(5); //Wait 5sec
@@ -394,6 +431,9 @@ void handleSubProgB(uint8_t in2PinState){
 void handleSubProgC(uint16_t temperature){
 	switch(temp1CurrentState){
 		case TEMP_S0:
+			if(!tickTemp1Done){
+				break;
+			}
 			if (temperature>EN_TEMP_LOW)
 			{
 				temp1CurrentState = TEMP_S1;
@@ -401,6 +441,9 @@ void handleSubProgC(uint16_t temperature){
 			}
 			break;
 		case TEMP_S1:
+			if(!tickTemp1Done){
+				break;
+			}
 			if(temperature>EN_TEMP_LOW){
 				//still above low temp
 				//turn on output 4
@@ -411,6 +454,9 @@ void handleSubProgC(uint16_t temperature){
 			break;
 			
 		case TEMP_S2:
+			if(!tickTemp1Done){
+				break;
+			}
 			if(temperature>EN_TEMP_LOW){
 				//Keep the fan on
 				temp1CurrentState = TEMP_S1;
@@ -423,5 +469,48 @@ void handleSubProgC(uint16_t temperature){
 			}
 			break;
 			
+	}
+}
+
+
+void handleSubProgD(uint16_t temperature){
+	switch(temp2CurrentState){
+		case TEMP_S0:
+			if(!tickTemp2Done){
+				break;
+			}
+			
+			if(temperature>EN_TEMP_HIGH){
+				temp2CurrentState = TEMP_S1;
+				startTempTimer2(15); //Wait 15sec				
+			}
+			break;
+		case TEMP_S1:
+			if(temperature>EN_TEMP_HIGH){
+				//turn on the TOR 1&2 Outputs 1-2
+				writeRelayOutput(EN_GPIO_TOR_1, 1);
+				writeRelayOutput(EN_GPIO_TOR_2, 1);
+				writeRelayOutput(EN_GPIO_OUTPUT_1,1);
+				writeRelayOutput(EN_GPIO_OUTPUT_2, 1);
+				
+				temp2CurrentState = TEMP_S2;
+				startTempTimer2(15);//wait 10 min
+			}
+			break;
+		case TEMP_S2:
+			if(temperature>EN_TEMP_HIGH){
+				//return to previous state
+				temp2CurrentState = TEMP_S1;
+				startTempTimer2(2);//Small delay
+			}else{
+				//Turn off the TOR1&2 and Outputs 1&2
+				writeRelayOutput(EN_GPIO_TOR_1, 0);
+				writeRelayOutput(EN_GPIO_TOR_2, 0);
+				writeRelayOutput(EN_GPIO_OUTPUT_1, 0);
+				writeRelayOutput(EN_GPIO_OUTPUT_2, 0);
+				temp2CurrentState = TEMP_S0;//Return to the start
+				startTempTimer2(2);
+			}
+			break;
 	}
 }

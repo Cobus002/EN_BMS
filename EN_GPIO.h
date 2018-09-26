@@ -17,6 +17,7 @@
 #define EN_GPIO_OUTPUT_4	(uint8_t)7
 #define EN_GPIO_TOR_1		(uint8_t)8
 #define EN_GPIO_TOR_2		(uint8_t)9
+#define EN_GPIO_LATCH		(uint8_t)10
 
 //Available output states
 #define EN_OUTPUT_HIGH		(uint8_t)1
@@ -35,6 +36,7 @@ void initRelayOutputs();
 void initStatusLed();
 void initInputs();
 void initTempSensor();
+void initLatchOutput();
 
 void checkRelayOutputs();
 void checkStatusLED();
@@ -45,6 +47,8 @@ uint16_t readTempSens();
 
 void writeRelayOutput(uint8_t en_output, uint8_t val);
 void writeLEDOutput(uint8_t red, uint8_t blue, uint8_t green);
+
+void writeBatteryLatch(uint8_t state);
 
 
 

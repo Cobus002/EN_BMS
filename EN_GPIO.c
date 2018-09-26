@@ -6,8 +6,19 @@ void initRelayOutputs(){
 	DDRB |= (1<<PB7)|(1<<PB6);
 	//TOR OUTPUTS
 	DDRD |= (1<<PD3)|(1<<PD4);
+}
+
+void initLatchOutput(){
+	DDRD|=(1<<6);
+	DDRB|=(1<<2);
+}
+
+void writeBatteryLatch(uint8_t state){
+	state == 0? (PORTD &= ~(1<<6)):(PORTD|=(1<<6));
+	state == 0? (PORTB &= ~(1<<2)):(PORTB|=(1<<2));
 	
 }
+
 void initInputs(){
 	
 	//DDRD |= (1<<PD2)|(1<<PD1)|(1<<PD0); //optos 2-4
